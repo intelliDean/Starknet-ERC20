@@ -49,6 +49,7 @@ pub mod ERC20 {
         Approval: Approval,
         Mint: Mint,
         Burnt: Burnt,
+        Ownership: Ownership
     }
 
     #[derive(Drop, starknet::Event)]
@@ -81,6 +82,14 @@ pub mod ERC20 {
         #[key]
         burner: ContractAddress,
         value: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct Ownership {
+        #[key]
+        current_owner: ContractAddress,
+        #[key]
+        prev_owner: ContractAddress,
     }
 
     #[constructor]
@@ -216,7 +225,7 @@ pub mod ERC20 {
             self.emit(Approval { 
                 owner, 
                 spender, 
-                value: new_all
+                value: added_amount
             });
         }
 
@@ -235,7 +244,8 @@ pub mod ERC20 {
             self.emit(Approval { 
                 owner, 
                 spender, 
-                value: new_all});
+                value: sub_amount
+                });
         }
 
         fn burn(ref self: ContractState, amount: u256) {
@@ -266,11 +276,17 @@ pub mod ERC20 {
         fn claim_ownership(ref self: ContractState) {
 
             let caller = get_caller_address();
+            let prev_owner = self.owner.read();
 
             assert(self.init_owner.read() == caller, 'Not the designated owner');
             
             self.init_owner.write(contract_address_const::<0>());
             self.owner.write(caller);
+
+            self.emit(Ownership {
+                current_owner: self.owner.read(),
+                prev_owner: prev_owner
+            })
         }
     }
 
@@ -291,5 +307,8 @@ pub mod ERC20 {
                 'Only owner'
             );
         }
+
+
+        
     }
 }
